@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Adi.Cap.SqlServer.Es</RootNamespace>
+    <AssemblyName>Adi.Cap.SqlServer.Es</AssemblyName>
+    <Version>1.0.0</Version>
+    <Authors>Adi</Authors>
+    <Description>CAP SqlServer IDataStorage decorator: offload large message Content to Elasticsearch.</Description>
+    <PackageId>Adi.Cap.SqlServer.Es</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <PackageProjectUrl>https://github.com/guoxdxdxd/Adi.Cap.SqlServer.Es</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/guoxdxdxd/Adi.Cap.SqlServer.Es</RepositoryUrl>
+    <PackageTags>CAP;SqlServer;Elasticsearch;Message;Offload;DotNetCore.CAP</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AdiElasticSugar.Core" Version="1.1.6" />
+    <PackageReference Include="DotNetCore.CAP" Version="10.0.1" />
+    <PackageReference Include="DotNetCore.CAP.SqlServer" Version="10.0.1" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>
