@@ -8,7 +8,7 @@ Uses [Adi.ElasticSugar.Core](https://www.nuget.org/packages/AdiElasticSugar.Core
 
 ```xml
 <PackageReference Include="AdiElasticSugar.Core" Version="1.1.6" />
-<ProjectReference Include="path/to/Adi.Cap.SqlServer.Es/Adi.Cap.SqlServer.Es.csproj" />
+<PackageReference Include="AdiCapSqlServer.Es" Version="1.0.0" />
 ```
 
 ## Host responsibilities

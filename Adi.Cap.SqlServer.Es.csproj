@@ -9,7 +9,7 @@
     <Version>1.0.0</Version>
     <Authors>Adi</Authors>
     <Description>CAP SqlServer IDataStorage decorator: offload large message Content to Elasticsearch.</Description>
-    <PackageId>Adi.Cap.SqlServer.Es</PackageId>
+    <PackageId>AdiCapSqlServer.Es</PackageId>
     <PackageVersion>1.0.0</PackageVersion>
     <PackageProjectUrl>https://github.com/guoxdxdxd/Adi.Cap.SqlServer.Es</PackageProjectUrl>
     <RepositoryUrl>https://github.com/guoxdxdxd/Adi.Cap.SqlServer.Es</RepositoryUrl>
