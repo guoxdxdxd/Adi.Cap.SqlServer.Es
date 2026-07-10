@@ -6,11 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Adi.Cap.SqlServer.Es</RootNamespace>
     <AssemblyName>Adi.Cap.SqlServer.Es</AssemblyName>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Adi</Authors>
     <Description>CAP SqlServer IDataStorage decorator: offload large message Content to Elasticsearch.</Description>
     <PackageId>AdiCapSqlServer.Es</PackageId>
-    <PackageVersion>1.0.0</PackageVersion>
+    <PackageVersion>1.0.1</PackageVersion>
     <PackageProjectUrl>https://github.com/guoxdxdxd/Adi.Cap.SqlServer.Es</PackageProjectUrl>
     <RepositoryUrl>https://github.com/guoxdxdxd/Adi.Cap.SqlServer.Es</RepositoryUrl>
     <PackageTags>CAP;SqlServer;Elasticsearch;Message;Offload;DotNetCore.CAP</PackageTags>
