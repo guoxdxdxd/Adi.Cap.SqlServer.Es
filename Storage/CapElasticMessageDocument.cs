@@ -26,6 +26,8 @@ public sealed class CapElasticMessageDocument : BaseEsModel
 
     /// <summary>
     /// CAP 原 DB Content 全文（序列化后）。
+    /// 仅写入 _source、不参与索引：外置场景按 _id 读写即可；默认 text + keyword 映射会在正文超过 32766 字节时触发 mapper_parsing_exception。
     /// </summary>
+    [EsField(Index = false, NeedKeyword = false)]
     public string Content { get; set; } = string.Empty;
 }
