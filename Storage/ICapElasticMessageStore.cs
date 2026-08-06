@@ -8,13 +8,15 @@ namespace Adi.Cap.SqlServer.Es.Storage;
 public interface ICapElasticMessageStore
 {
     /// <summary>
-    /// 写入正文；返回 indexName（用于 envelope）。失败抛异常（fail-fast）。
+    /// 写入正文；返回 indexName（用于 envelope）。
+    /// Content 超过上限时不写 ES，抛异常以拒绝 CAP 入库（fail-fast）。
     /// </summary>
     /// <param name="capMessageId">CAP 消息 Id。</param>
     /// <param name="topicName">CAP Topic 名称。</param>
     /// <param name="fullContent">序列化后的完整 Content。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>写入的 ES 索引名。</returns>
+    /// <exception cref="InvalidOperationException">Content 超过 <see cref="Options.CapElasticOffloadLimits.MaxContentLengthBytes"/>。</exception>
     Task<string> WriteAsync(
         string capMessageId,
         string topicName,

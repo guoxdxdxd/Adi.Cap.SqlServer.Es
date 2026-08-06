@@ -1,3 +1,4 @@
+using System.Text;
 using Adi.Cap.SqlServer.Es.Context;
 using Adi.Cap.SqlServer.Es.Envelope;
 using Adi.Cap.SqlServer.Es.Options;
@@ -39,7 +40,7 @@ public sealed class CapElasticOffloadSerializer : ISerializer
     }
 
     /// <inheritdoc />
-    /// <remarks>写入作用域内且 Topic 已配置外置时，正文写入 ES 并返回 envelope JSON。</remarks>
+    /// <remarks>写入作用域内且 Topic 已配置外置时，正文写入 ES 并返回 envelope JSON；超限则抛异常拒绝入库。</remarks>
     public string Serialize(Message message)
     {
         var scope = CapElasticOffloadWriteContext.Current;
@@ -50,6 +51,7 @@ public sealed class CapElasticOffloadSerializer : ISerializer
 
         var fullContent = _inner.Serialize(message);
         var capMessageId = scope.CapMessageId ?? message.GetId();
+        var contentUtf8Bytes = Encoding.UTF8.GetByteCount(fullContent);
 
         try
         {
@@ -57,15 +59,22 @@ public sealed class CapElasticOffloadSerializer : ISerializer
                 .WriteAsync(capMessageId, scope.TopicName, fullContent)
                 .GetAwaiter()
                 .GetResult();
+
             return CapEsContentEnvelope.Format(indexName, capMessageId);
+        }
+        catch (InvalidOperationException)
+        {
+            // 含超限拒绝入库；原样抛出，避免再记成 ES 写入失败。
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(
                 ex,
-                "CapElasticOffloadSerializer 写入 ES 失败 Topic={Topic} CapMessageId={CapMessageId}",
+                "CapElasticOffloadSerializer 写入 ES 失败 Topic={Topic} CapMessageId={CapMessageId} ContentUtf8Bytes={ContentUtf8Bytes}",
                 scope.TopicName,
-                capMessageId);
+                capMessageId,
+                contentUtf8Bytes);
             throw;
         }
     }
@@ -80,6 +89,12 @@ public sealed class CapElasticOffloadSerializer : ISerializer
     /// <remarks>识别 envelope 时从 ES 拉取正文后再反序列化，供 SqlServerDataStorage 各读路径使用。</remarks>
     public Message? Deserialize(string json)
     {
+        if (CapEsContentEnvelope.IsDiscarded(json))
+        {
+            throw new InvalidOperationException(
+                $"CAP 消息正文因超过 {CapElasticOffloadLimits.MaxContentLengthBytes} 字节曾被拒绝/丢弃，无法从 ES 还原。");
+        }
+
         if (CapEsContentEnvelope.TryParse(json, CapElasticMessageDocument.EnvelopeIndexPrefix, out var reference))
         {
             try

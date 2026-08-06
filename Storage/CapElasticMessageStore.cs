@@ -1,5 +1,7 @@
+using System.Text;
 using Adi.Cap.SqlServer.Es.Elastic;
 using Adi.Cap.SqlServer.Es.Envelope;
+using Adi.Cap.SqlServer.Es.Options;
 using Adi.ElasticSugar.Core.Document;
 using Elastic.Clients.Elasticsearch;
 using Microsoft.Extensions.Logging;
@@ -36,6 +38,19 @@ public sealed class CapElasticMessageStore : ICapElasticMessageStore
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var contentUtf8Bytes = Encoding.UTF8.GetByteCount(fullContent);
+        if (contentUtf8Bytes > CapElasticOffloadLimits.MaxContentLengthBytes)
+        {
+            _logger.LogWarning(
+                "CapElasticOffloadContentRejected Topic={Topic} CapId={CapId} ContentUtf8Bytes={ContentUtf8Bytes} MaxBytes={MaxBytes}",
+                topicName,
+                capMessageId,
+                contentUtf8Bytes,
+                CapElasticOffloadLimits.MaxContentLengthBytes);
+            throw new InvalidOperationException(
+                $"CAP 外置 Content 超过上限 {CapElasticOffloadLimits.MaxContentLengthBytes} 字节（实际 {contentUtf8Bytes}），拒绝入库。Topic={topicName}, CapId={capMessageId}");
+        }
+
         var document = new CapElasticMessageDocument
         {
             Id = capMessageId,
@@ -52,21 +67,23 @@ public sealed class CapElasticMessageStore : ICapElasticMessageStore
             await client.PushDocumentAsync(document).ConfigureAwait(false);
 
             _logger.LogInformation(
-                "CapElasticOffload ES 写入成功 Topic={Topic} CapId={CapId} IndexName={IndexName}",
+                "CapElasticOffload ES 写入成功 Topic={Topic} CapId={CapId} IndexName={IndexName} ContentUtf8Bytes={ContentUtf8Bytes}",
                 topicName,
                 capMessageId,
-                indexName);
+                indexName,
+                contentUtf8Bytes);
 
             return indexName;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException and not InvalidOperationException)
         {
             _logger.LogError(
                 ex,
-                "CapElasticOffloadWriteFailed Topic={Topic} CapId={CapId} IndexName={IndexName}",
+                "CapElasticOffloadWriteFailed Topic={Topic} CapId={CapId} IndexName={IndexName} ContentUtf8Bytes={ContentUtf8Bytes}",
                 topicName,
                 capMessageId,
-                indexName);
+                indexName,
+                contentUtf8Bytes);
             throw;
         }
     }

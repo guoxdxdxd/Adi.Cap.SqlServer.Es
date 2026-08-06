@@ -21,6 +21,11 @@ internal static class CapElasticDbContentResolver
         ILogger logger,
         string logCategory)
     {
+        if (CapEsContentEnvelope.IsDiscarded(dbContent))
+        {
+            return dbContent;
+        }
+
         if (!CapEsContentEnvelope.TryParse(dbContent, CapElasticMessageDocument.EnvelopeIndexPrefix, out var reference))
         {
             return dbContent;

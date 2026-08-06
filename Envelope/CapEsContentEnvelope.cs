@@ -20,6 +20,11 @@ public static class CapEsContentEnvelope
     public const string PropertyName = "$capEs";
 
     /// <summary>
+    /// 超限丢弃标记属性名（DB 仅存轻量 JSON，不写 ES）。
+    /// </summary>
+    public const string DiscardedPropertyName = "$capEsDiscarded";
+
+    /// <summary>
     /// 格式化为 DB 存储 JSON（紧凑，无多余空白）。
     /// </summary>
     /// <param name="indexName">ES 索引名。</param>
@@ -31,6 +36,47 @@ public static class CapEsContentEnvelope
         {
             [PropertyName] = $"{indexName}/{capMessageId}"
         });
+    }
+
+    /// <summary>
+    /// 格式化超限丢弃标记（不写 ES，避免大正文落 SQL）。
+    /// </summary>
+    /// <param name="capMessageId">CAP 消息 Id。</param>
+    /// <param name="contentUtf8Bytes">被丢弃正文的 UTF-8 字节数。</param>
+    /// <returns>丢弃标记 JSON。</returns>
+    public static string FormatDiscarded(string capMessageId, int contentUtf8Bytes)
+    {
+        return JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            [DiscardedPropertyName] = "content_exceeds_max",
+            ["capMsgId"] = capMessageId,
+            ["bytes"] = contentUtf8Bytes
+        });
+    }
+
+    /// <summary>
+    /// 判断 DB Content 是否为超限丢弃标记。
+    /// </summary>
+    /// <param name="dbContent">数据库 Content 列原文。</param>
+    /// <returns>是丢弃标记时返回 true。</returns>
+    public static bool IsDiscarded(string? dbContent)
+    {
+        if (string.IsNullOrWhiteSpace(dbContent)
+            || !dbContent.StartsWith('{')
+            || dbContent.Length > 512)
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(dbContent);
+            return document.RootElement.TryGetProperty(DiscardedPropertyName, out _);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     /// <summary>
