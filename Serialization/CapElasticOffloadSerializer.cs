@@ -40,7 +40,10 @@ public sealed class CapElasticOffloadSerializer : ISerializer
     }
 
     /// <inheritdoc />
-    /// <remarks>写入作用域内且 Topic 已配置外置时，正文写入 ES 并返回 envelope JSON；超限则抛异常拒绝入库。</remarks>
+    /// <remarks>
+    /// 写入作用域内且 Topic 已配置外置时，正文写入 ES 并返回 envelope JSON。
+    /// 超限时不抛异常：清空 Value、不写 ES，DB 仅存 Headers 轻量 JSON，CAP 流程继续。
+    /// </remarks>
     public string Serialize(Message message)
     {
         var scope = CapElasticOffloadWriteContext.Current;
@@ -53,6 +56,11 @@ public sealed class CapElasticOffloadSerializer : ISerializer
         var capMessageId = scope.CapMessageId ?? message.GetId();
         var contentUtf8Bytes = Encoding.UTF8.GetByteCount(fullContent);
 
+        if (contentUtf8Bytes > CapElasticOffloadLimits.MaxContentLengthBytes)
+        {
+            return RejectOversizedContent(message, scope.TopicName, capMessageId, contentUtf8Bytes);
+        }
+
         try
         {
             var indexName = _elasticStore
@@ -60,12 +68,12 @@ public sealed class CapElasticOffloadSerializer : ISerializer
                 .GetAwaiter()
                 .GetResult();
 
+            if (indexName is null)
+            {
+                return RejectOversizedContent(message, scope.TopicName, capMessageId, contentUtf8Bytes);
+            }
+
             return CapEsContentEnvelope.Format(indexName, capMessageId);
-        }
-        catch (InvalidOperationException)
-        {
-            // 含超限拒绝入库；原样抛出，避免再记成 ES 写入失败。
-            throw;
         }
         catch (Exception ex)
         {
@@ -91,8 +99,10 @@ public sealed class CapElasticOffloadSerializer : ISerializer
     {
         if (CapEsContentEnvelope.IsDiscarded(json))
         {
-            throw new InvalidOperationException(
-                $"CAP 消息正文因超过 {CapElasticOffloadLimits.MaxContentLengthBytes} 字节曾被拒绝/丢弃，无法从 ES 还原。");
+            _logger.LogWarning(
+                "CapElasticOffloadContentDiscarded 反序列化跳过正文 CapContentSnippet={ContentSnippet}",
+                json.Length > 128 ? json[..128] : json);
+            return new Message();
         }
 
         if (CapEsContentEnvelope.TryParse(json, CapElasticMessageDocument.EnvelopeIndexPrefix, out var reference))
@@ -136,5 +146,26 @@ public sealed class CapElasticOffloadSerializer : ISerializer
     {
         return !string.IsNullOrWhiteSpace(topicName)
                && _options.Value.OffloadedTopicNames.Contains(topicName);
+    }
+
+    /// <summary>
+    /// 超限拒绝正文：清空 Value，DB 仅存 Headers，不写 ES、不抛异常。
+    /// </summary>
+    private string RejectOversizedContent(
+        Message message,
+        string topicName,
+        string capMessageId,
+        int contentUtf8Bytes)
+    {
+        _logger.LogWarning(
+            "CapElasticOffloadContentRejected Topic={Topic} CapMessageId={CapMessageId} ContentUtf8Bytes={ContentUtf8Bytes} MaxBytes={MaxBytes}",
+            topicName,
+            capMessageId,
+            contentUtf8Bytes,
+            CapElasticOffloadLimits.MaxContentLengthBytes);
+
+        // 同一 Message 实例后续会发 MQ / 调订阅方法；清空 Value 即拒绝大正文处理。
+        message.Value = null;
+        return _inner.Serialize(message);
     }
 }

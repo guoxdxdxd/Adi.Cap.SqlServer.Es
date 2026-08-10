@@ -1,3 +1,4 @@
+using System.Text;
 using Adi.Cap.SqlServer.Es.Context;
 using Adi.Cap.SqlServer.Es.Envelope;
 using Adi.Cap.SqlServer.Es.Monitoring;
@@ -111,7 +112,10 @@ public sealed class CapElasticOffloadDataStorage : IDataStorage
     }
 
     /// <inheritdoc />
-    /// <remarks>异常消息 Content 为原始字符串，不经 ISerializer，此处先写 ES 再以 envelope 交给内层。</remarks>
+    /// <remarks>
+    /// 异常消息 Content 为原始字符串，不经 ISerializer，此处先写 ES 再以 envelope 交给内层。
+    /// 超限时不抛异常：DB 写入 discarded 标记，CAP 入库继续。
+    /// </remarks>
     public async Task StoreReceivedExceptionMessageAsync(string name, string group, string content)
     {
         if (!IsOffloadedTopic(name))
@@ -124,8 +128,10 @@ public sealed class CapElasticOffloadDataStorage : IDataStorage
         {
             var capId = _snowflakeId.NextId().ToString();
             var indexName = await _elasticStore.WriteAsync(capId, name, content).ConfigureAwait(false);
-            var envelope = CapEsContentEnvelope.Format(indexName, capId);
-            await _inner.StoreReceivedExceptionMessageAsync(name, group, envelope).ConfigureAwait(false);
+            var dbContent = indexName is null
+                ? CapEsContentEnvelope.FormatDiscarded(capId, Encoding.UTF8.GetByteCount(content))
+                : CapEsContentEnvelope.Format(indexName, capId);
+            await _inner.StoreReceivedExceptionMessageAsync(name, group, dbContent).ConfigureAwait(false);
         }
     }
 

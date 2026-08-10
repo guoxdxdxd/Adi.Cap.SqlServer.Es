@@ -30,7 +30,7 @@ public sealed class CapElasticMessageStore : ICapElasticMessageStore
     }
 
     /// <inheritdoc />
-    public async Task<string> WriteAsync(
+    public async Task<string?> WriteAsync(
         string capMessageId,
         string topicName,
         string fullContent,
@@ -47,8 +47,7 @@ public sealed class CapElasticMessageStore : ICapElasticMessageStore
                 capMessageId,
                 contentUtf8Bytes,
                 CapElasticOffloadLimits.MaxContentLengthBytes);
-            throw new InvalidOperationException(
-                $"CAP 外置 Content 超过上限 {CapElasticOffloadLimits.MaxContentLengthBytes} 字节（实际 {contentUtf8Bytes}），拒绝入库。Topic={topicName}, CapId={capMessageId}");
+            return null;
         }
 
         var document = new CapElasticMessageDocument
@@ -75,7 +74,7 @@ public sealed class CapElasticMessageStore : ICapElasticMessageStore
 
             return indexName;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException and not InvalidOperationException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(
                 ex,

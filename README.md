@@ -185,6 +185,7 @@ CAP 过期清理（`DeleteExpiresAsync`）**仅删除 SQL 行**，不会批量�
 
 | 场景 | 行为 |
 |------|------|
+| **Content 超限（>2MiB）** | **不抛异常**：不写 ES，清空 Value，DB 仅存 Headers；CAP 入库/ack 照常 |
 | **ES 写入失败** | 存储操作失败，**完整 Content 不会写入 SQL** |
 | **ES 读取失败**（消费重试、反序列化） | 抛出异常，CAP 按原有机制重试 |
 | **ES 删除失败** | 记录 Warning，**SQL 删除继续** |
@@ -199,6 +200,8 @@ CAP 过期清理（`DeleteExpiresAsync`）**仅删除 SQL 行**，不会批量�
 | `CapElasticOffloadWriteFailed` | ES 写入失败 |
 | `CapElasticOffloadReadFailed` | ES 读取失败 |
 | `CapElasticOffloadDeleteFailed` | ES 删除失败 |
+| `CapElasticOffloadContentRejected` | Content 超限拒绝写 ES（不抛异常） |
+| `CapElasticOffloadContentDiscarded` | 反序列化遇到 discarded 标记 |
 
 ## 使用注意事项
 

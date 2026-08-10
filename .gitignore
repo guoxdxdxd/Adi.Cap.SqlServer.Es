@@ -45,3 +45,11 @@ Thumbs.db
 *.log
 *.tmp
 *.temp
+
+## OffloadProbe：本地密钥 / 内网地址（勿提交）
+**/appsettings.Local.json
+**/appsettings.*.Local.json
+samples/OffloadProbe/**/appsettings.Development.json
+samples/OffloadProbe/**/Logs/
+samples/OffloadProbe/**/*.log
+/tmp/cap-probe-*.log
