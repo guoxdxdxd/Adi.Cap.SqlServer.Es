@@ -1,0 +1,56 @@
+# NuGet Trusted Publishing：与 nuget.org 策略中的 Workflow File = publish.yml 保持一致。
+# 触发：打标签 v*（如 v1.0.5）或手动 Run workflow。
+# 本仓库无单元测试；发布流水线仅 build + pack + push。
+name: Publish NuGet
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Trusted Publishing 需要 OIDC
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Adi.Cap.SqlServer.Es.sln
+
+      - name: Build
+        run: dotnet build Adi.Cap.SqlServer.Es.sln -c Release --no-restore
+
+      - name: Pack
+        run: |
+          dotnet pack Adi.Cap.SqlServer.Es.csproj \
+            -c Release \
+            --no-build \
+            -o "${{ github.workspace }}/artifacts"
+
+      - name: NuGet login (OIDC → temp API key)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          # nuget.org 用户名（个人资料名），不是邮箱
+          user: guoxd
+
+      - name: Push to nuget.org
+        run: |
+          dotnet nuget push "${{ github.workspace }}/artifacts/"*.nupkg \
+            --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
